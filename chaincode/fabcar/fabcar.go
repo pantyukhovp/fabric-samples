@@ -43,11 +43,10 @@ type SmartContract struct {
 }
 
 // Define the car structure, with 4 properties.  Structure tags are used by encoding/json library
-type Car struct {
-	Make   string `json:"make"`
-	Model  string `json:"model"`
-	Colour string `json:"colour"`
-	Owner  string `json:"owner"`
+type User struct {
+	FirstName   string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	ImageUrl string `json:"imageUrl"`
 }
 
 /*
@@ -67,14 +66,14 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
 	// Retrieve the requested Smart Contract function and arguments
 	function, args := APIstub.GetFunctionAndParameters()
 	// Route to the appropriate handler function to interact with the ledger appropriately
-	if function == "queryCar" {
+	if function == "queryPersons" {
 		return s.queryCar(APIstub, args)
 	} else if function == "initLedger" {
 		return s.initLedger(APIstub)
 	} else if function == "createCar" {
 		return s.createCar(APIstub, args)
 	} else if function == "queryAllCars" {
-		return s.queryAllCars(APIstub)
+		return s.queryAllUsers(APIstub)
 	} else if function == "changeCarOwner" {
 		return s.changeCarOwner(APIstub, args)
 	}
@@ -93,25 +92,20 @@ func (s *SmartContract) queryCar(APIstub shim.ChaincodeStubInterface, args []str
 }
 
 func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Response {
-	cars := []Car{
-		Car{Make: "Toyota", Model: "Prius", Colour: "blue", Owner: "Tomoko"},
-		Car{Make: "Ford", Model: "Mustang", Colour: "red", Owner: "Brad"},
-		Car{Make: "Hyundai", Model: "Tucson", Colour: "green", Owner: "Jin Soo"},
-		Car{Make: "Volkswagen", Model: "Passat", Colour: "yellow", Owner: "Max"},
-		Car{Make: "Tesla", Model: "S", Colour: "black", Owner: "Adriana"},
-		Car{Make: "Peugeot", Model: "205", Colour: "purple", Owner: "Michel"},
-		Car{Make: "Chery", Model: "S22L", Colour: "white", Owner: "Aarav"},
-		Car{Make: "Fiat", Model: "Punto", Colour: "violet", Owner: "Pari"},
-		Car{Make: "Tata", Model: "Nano", Colour: "indigo", Owner: "Valeria"},
-		Car{Make: "Holden", Model: "Barina", Colour: "brown", Owner: "Shotaro"},
+	users := []User{
+		User{FirstName: "Pavel", LastName: "Pantyukhov", ImageUrl: "https://pp.userapi.com/c638918/v638918847/3d1d9/s_auB5cvB6M.jpg"},
+		User{FirstName: "Maksim", LastName: "Kuznetsov", ImageUrl: "https://pp.userapi.com/c307310/v307310903/602d/Gyr1qLrB23Q.jpg"},
+		User{FirstName: "Yakov", LastName: "Kanner", ImageUrl: ""},
+		User{FirstName: "Vitaliy", LastName: "Melnik", ImageUrl: ""},
+		User{FirstName: "Vladimir", LastName: "Ivanov", ImageUrl: ""},
 	}
 
 	i := 0
-	for i < len(cars) {
+	for i < len(users) {
 		fmt.Println("i is ", i)
-		carAsBytes, _ := json.Marshal(cars[i])
-		APIstub.PutState("CAR"+strconv.Itoa(i), carAsBytes)
-		fmt.Println("Added", cars[i])
+		userAsBytes, _ := json.Marshal(users[i])
+		APIstub.PutState("USER"+strconv.Itoa(i), userAsBytes)
+		fmt.Println("Added", users[i])
 		i = i + 1
 	}
 
@@ -124,7 +118,7 @@ func (s *SmartContract) createCar(APIstub shim.ChaincodeStubInterface, args []st
 		return shim.Error("Incorrect number of arguments. Expecting 5")
 	}
 
-	var car = Car{Make: args[1], Model: args[2], Colour: args[3], Owner: args[4]}
+	var car = User{FirstName: args[1], LastName: args[2], ImageUrl: args[3]}
 
 	carAsBytes, _ := json.Marshal(car)
 	APIstub.PutState(args[0], carAsBytes)
@@ -132,10 +126,10 @@ func (s *SmartContract) createCar(APIstub shim.ChaincodeStubInterface, args []st
 	return shim.Success(nil)
 }
 
-func (s *SmartContract) queryAllCars(APIstub shim.ChaincodeStubInterface) sc.Response {
+func (s *SmartContract) queryAllUsers(APIstub shim.ChaincodeStubInterface) sc.Response {
 
-	startKey := "CAR0"
-	endKey := "CAR999"
+	startKey := "USER0"
+	endKey := "USER999"
 
 	resultsIterator, err := APIstub.GetStateByRange(startKey, endKey)
 	if err != nil {
@@ -181,14 +175,14 @@ func (s *SmartContract) changeCarOwner(APIstub shim.ChaincodeStubInterface, args
 		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
 
-	carAsBytes, _ := APIstub.GetState(args[0])
-	car := Car{}
-
-	json.Unmarshal(carAsBytes, &car)
-	car.Owner = args[1]
-
-	carAsBytes, _ = json.Marshal(car)
-	APIstub.PutState(args[0], carAsBytes)
+	//carAsBytes, _ := APIstub.GetState(args[0])
+	//car := User{}
+	//
+	//json.Unmarshal(carAsBytes, &car)
+	//car.Owner = args[1]
+	//
+	//carAsBytes, _ = json.Marshal(car)
+	//APIstub.PutState(args[0], carAsBytes)
 
 	return shim.Success(nil)
 }
