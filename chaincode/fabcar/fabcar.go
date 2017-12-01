@@ -47,6 +47,7 @@ type User struct {
 	FirstName   string `json:"firstName"`
 	LastName  string `json:"lastName"`
 	ImageUrl string `json:"imageUrl"`
+	Hash string `json:"hash"`
 }
 
 /*
@@ -93,11 +94,11 @@ func (s *SmartContract) queryCar(APIstub shim.ChaincodeStubInterface, args []str
 
 func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Response {
 	users := []User{
-		User{FirstName: "Pavel", LastName: "Pantyukhov", ImageUrl: "https://pp.userapi.com/c638918/v638918847/3d1d9/s_auB5cvB6M.jpg"},
-		User{FirstName: "Maksim", LastName: "Kuznetsov", ImageUrl: "https://pp.userapi.com/c307310/v307310903/602d/Gyr1qLrB23Q.jpg"},
-		User{FirstName: "Yakov", LastName: "Kanner", ImageUrl: ""},
-		User{FirstName: "Vitaliy", LastName: "Melnik", ImageUrl: ""},
-		User{FirstName: "Vladimir", LastName: "Ivanov", ImageUrl: ""},
+		User{FirstName: "Pavel", LastName: "Pantyukhov", ImageUrl: "https://pp.userapi.com/c638918/v638918847/3d1d9/s_auB5cvB6M.jpg", Hash: "3u891738291hdiawhduiawdhiuawd"},
+		User{FirstName: "Maksim", LastName: "Kuznetsov", ImageUrl: "https://pp.userapi.com/c307310/v307310903/602d/Gyr1qLrB23Q.jpg", Hash: "2903821390218390jdioawjdiowajdoiaw"},
+		User{FirstName: "Yakov", LastName: "Kanner", ImageUrl: "", Hash: "1892737128djwaiodjiawodjwoi"},
+		User{FirstName: "Vitaliy", LastName: "Melnik", ImageUrl: "", Hash: "1231jdlawmdklawjdklawnmdlkwandjakwn"},
+		User{FirstName: "Vladimir", LastName: "Ivanov", ImageUrl: "", Hash: "mcjkz7873827381hdaw"},
 	}
 
 	i := 0
@@ -118,10 +119,10 @@ func (s *SmartContract) createCar(APIstub shim.ChaincodeStubInterface, args []st
 		return shim.Error("Incorrect number of arguments. Expecting 5")
 	}
 
-	var car = User{FirstName: args[1], LastName: args[2], ImageUrl: args[3]}
+	var user = User{FirstName: args[1], LastName: args[2], ImageUrl: args[3], Hash: args[4]}
 
-	carAsBytes, _ := json.Marshal(car)
-	APIstub.PutState(args[0], carAsBytes)
+	userAsBytes, _ := json.Marshal(user)
+	APIstub.PutState(args[0], userAsBytes)
 
 	return shim.Success(nil)
 }
