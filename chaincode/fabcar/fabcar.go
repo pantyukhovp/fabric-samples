@@ -53,10 +53,10 @@ type Clinic struct {
 }
 
 type Research struct {
-	Name   string `json:"name"`
-	Status string `json:"status"`
-	From   string `json:"from"`
-	To     string `json:"to"`
+	Name     string `json:"name"`
+	Status   string `json:"status"`
+	DateFrom string `json:"dateFrom"`
+	DateTo   string `json:"dateTrom"`
 }
 
 /*
@@ -91,6 +91,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
 		return s.changeCarOwner(APIstub, args)
 	} else if function == "queryAllClinics" {
 		return s.queryAllClinics(APIstub)
+	} else if function == "queryAllResouche" {
+		return s.queryAllResouche(APIstub)
 	}
 
 	return shim.Error("Invalid Smart Contract function name. 1")
@@ -161,6 +163,36 @@ func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Respo
 		j = j + 1
 	}
 
+	researchs := []Research{
+		Research{Name: "Исследование 1", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 2", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 3", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 4", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 5", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 6", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 7", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 8", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 9", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 10", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 11", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 12", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 13", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 14", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 15", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 16", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 17", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 18", Status: "Active", DateFrom: "", DateTo: ""},
+	}
+
+	j = 0
+	for j < len(researchs) {
+		fmt.Println("j is ", j)
+		clinicAsBytes, _ := json.Marshal(clinics[j])
+		APIstub.PutState("RESEARCH"+strconv.Itoa(j), clinicAsBytes)
+		fmt.Println("Added", clinics[j])
+		j = j + 1
+	}
+
 	return shim.Success(nil)
 }
 
@@ -179,6 +211,49 @@ func (s *SmartContract) createCar(APIstub shim.ChaincodeStubInterface, args []st
 }
 
 func (s *SmartContract) queryAllClinics(APIstub shim.ChaincodeStubInterface) sc.Response {
+
+	startKey := "CLINIC0"
+	endKey := "CLINIC20"
+
+	resultsIterator, err := APIstub.GetStateByRange(startKey, endKey)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	// buffer is a JSON array containing QueryResults
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		// Add a comma before array members, suppress it for the first array member
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"Key\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(queryResponse.Key)
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"Record\":")
+		// Record is a JSON object, so we write as-is
+		buffer.WriteString(string(queryResponse.Value))
+		buffer.WriteString("}")
+		bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+
+	fmt.Printf("- queryAllCars:\n%s\n", buffer.String())
+
+	return shim.Success(buffer.Bytes())
+}
+
+func (s *SmartContract) queryAllResouche(APIstub shim.ChaincodeStubInterface) sc.Response {
 
 	startKey := "CLINIC0"
 	endKey := "CLINIC20"
