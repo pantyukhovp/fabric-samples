@@ -57,8 +57,9 @@ Fabric_Client.newDefaultKeyValueStore({ path: store_path
 		// fcn: 'queryAllResearches',
 		// args: []
 
+//		fcn: 'getAllSubscribers',
 		fcn: 'queryResearche',
-		args: ['RESEARCH3', 'USER0']
+		args: ['RESEARCH0', 'USER0']
 	};
 
 	// send the query proposal to the peer

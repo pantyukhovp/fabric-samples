@@ -32,6 +32,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"strconv"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -57,7 +58,11 @@ type Research struct {
 	Status   string `json:"status"`
 	DateFrom string `json:"dateFrom"`
 	DateTo   string `json:"dateTrom"`
-	User     []User `json:"users"`
+}
+
+type ResearchUser struct {
+	UserID     string `json:"userID"`
+	ResearchID string `json:"researchID"`
 }
 
 /*
@@ -96,6 +101,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
 		return s.queryAllResearches(APIstub)
 	} else if function == "queryResearche" {
 		return s.subscribe(APIstub, args)
+	} else if function == "getAllSubscribers" {
+		return s.getAllSubscribers(APIstub, args)
 	}
 
 	return shim.Error("Invalid Smart Contract function name. 1")
@@ -167,11 +174,11 @@ func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Respo
 	}
 
 	researchs := []Research{
-		Research{Name: "Исследование 1", Status: "Active", DateFrom: "", DateTo: "", User: []User{}},
+		Research{Name: "Исследование 1", Status: "Active", DateFrom: "", DateTo: ""},
 	}
 
 	for j := 0; j < 100; j++ {
-		researchs = append(researchs, Research{Name: "Исследование 1", Status: "Active", DateFrom: "", DateTo: "", User: []User{}})
+		researchs = append(researchs, Research{Name: "Исследование 1", Status: "Active", DateFrom: "", DateTo: ""})
 	}
 	j = 0
 	for j < len(researchs) {
@@ -299,11 +306,59 @@ func (s *SmartContract) subscribe(APIstub shim.ChaincodeStubInterface, args []st
 	user := User{}
 	json.Unmarshal(userAsBytes, &user)
 
-	research.User = append(research.User, user)
-	researchAsBytes, _ = json.Marshal(research)
+	asBytes, _ := json.Marshal(ResearchUser{UserID: args[1], ResearchID: args[0]})
 
-	APIstub.PutState(args[0], researchAsBytes)
-	return shim.Success(researchAsBytes)
+	key := "RESEARCHUSER" + strconv.Itoa(rand.Intn(10000000))
+	//TODO SOOOOOBAD
+	APIstub.PutState(key, asBytes)
+
+	itemAsBytes, _ := APIstub.GetState(key)
+	return shim.Success(itemAsBytes)
+
+}
+
+func (s *SmartContract) getAllSubscribers(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
+
+	startKey := "RESEARCHUSER0"
+	endKey := "RESEARCHUSER2000000000"
+
+	resultsIterator, err := APIstub.GetStateByRange(startKey, endKey)
+
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	// buffer is a JSON array containing QueryResults
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		// Add a comma before array members, suppress it for the first array member
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"Key\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(queryResponse.Key)
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"Record\":")
+		// Record is a JSON object, so we write as-is
+		buffer.WriteString(string(queryResponse.Value))
+		buffer.WriteString("}")
+		bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+
+	fmt.Printf("- queryAllCars:\n%s\n", buffer.String())
+
+	return shim.Success(buffer.Bytes())
 }
 
 func (s *SmartContract) queryAllUsers(APIstub shim.ChaincodeStubInterface) sc.Response {
@@ -375,4 +430,14 @@ func main() {
 	if err != nil {
 		fmt.Printf("Error creating new Smart Contract: %s", err)
 	}
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func randSeq(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
