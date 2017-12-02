@@ -91,8 +91,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
 		return s.changeCarOwner(APIstub, args)
 	} else if function == "queryAllClinics" {
 		return s.queryAllClinics(APIstub)
-	} else if function == "queryAllResouche" {
-		return s.queryAllResouche(APIstub)
+	} else if function == "queryAllResearches" {
+		return s.queryAllResearches(APIstub)
 	}
 
 	return shim.Error("Invalid Smart Contract function name. 1")
@@ -253,7 +253,7 @@ func (s *SmartContract) queryAllClinics(APIstub shim.ChaincodeStubInterface) sc.
 	return shim.Success(buffer.Bytes())
 }
 
-func (s *SmartContract) queryAllResouche(APIstub shim.ChaincodeStubInterface) sc.Response {
+func (s *SmartContract) queryAllResearches(APIstub shim.ChaincodeStubInterface) sc.Response {
 
 	startKey := "CLINIC0"
 	endKey := "CLINIC20"
