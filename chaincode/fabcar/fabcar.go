@@ -57,6 +57,7 @@ type Research struct {
 	Status   string `json:"status"`
 	DateFrom string `json:"dateFrom"`
 	DateTo   string `json:"dateTrom"`
+	User     []User `json:"users"`
 }
 
 /*
@@ -79,7 +80,7 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
 	//queryAllClinics
 
 	// Route to the appropriate handler function to interact with the ledger appropriately
-	if function == "queryPersons" {
+	if function == "queryPerson" {
 		return s.queryCar(APIstub, args)
 	} else if function == "initLedger" {
 		return s.initLedger(APIstub)
@@ -93,6 +94,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
 		return s.queryAllClinics(APIstub)
 	} else if function == "queryAllResearches" {
 		return s.queryAllResearches(APIstub)
+	} else if function == "queryResearche" {
+		return s.subscribe(APIstub, args)
 	}
 
 	return shim.Error("Invalid Smart Contract function name. 1")
@@ -164,32 +167,18 @@ func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Respo
 	}
 
 	researchs := []Research{
-		Research{Name: "Исследование 1", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 2", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 3", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 4", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 5", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 6", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 7", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 8", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 9", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 10", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 11", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 12", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 13", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 14", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 15", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 16", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 17", Status: "Active", DateFrom: "", DateTo: ""},
-		Research{Name: "Исследование 18", Status: "Active", DateFrom: "", DateTo: ""},
+		Research{Name: "Исследование 1", Status: "Active", DateFrom: "", DateTo: "", User: []User{}},
 	}
 
+	for j := 0; j < 100; j++ {
+		researchs = append(researchs, Research{Name: "Исследование 1", Status: "Active", DateFrom: "", DateTo: "", User: []User{}})
+	}
 	j = 0
 	for j < len(researchs) {
 		fmt.Println("j is ", j)
-		clinicAsBytes, _ := json.Marshal(clinics[j])
-		APIstub.PutState("RESEARCH"+strconv.Itoa(j), clinicAsBytes)
-		fmt.Println("Added", clinics[j])
+		asBytes, _ := json.Marshal(researchs[j])
+		APIstub.PutState("RESEARCH"+strconv.Itoa(j), asBytes)
+		fmt.Println("Added", researchs[j])
 		j = j + 1
 	}
 
@@ -255,8 +244,8 @@ func (s *SmartContract) queryAllClinics(APIstub shim.ChaincodeStubInterface) sc.
 
 func (s *SmartContract) queryAllResearches(APIstub shim.ChaincodeStubInterface) sc.Response {
 
-	startKey := "CLINIC0"
-	endKey := "CLINIC20"
+	startKey := "RESEARCH0"
+	endKey := "RESEARCH2000000"
 
 	resultsIterator, err := APIstub.GetStateByRange(startKey, endKey)
 	if err != nil {
@@ -294,6 +283,27 @@ func (s *SmartContract) queryAllResearches(APIstub shim.ChaincodeStubInterface) 
 	fmt.Printf("- queryAllCars:\n%s\n", buffer.String())
 
 	return shim.Success(buffer.Bytes())
+}
+
+func (s *SmartContract) subscribe(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
+
+	if len(args) <= 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	researchAsBytes, _ := APIstub.GetState(args[0])
+	research := Research{}
+	json.Unmarshal(researchAsBytes, &research)
+
+	userAsBytes, _ := APIstub.GetState(args[1])
+	user := User{}
+	json.Unmarshal(userAsBytes, &user)
+
+	research.User = append(research.User, user)
+	researchAsBytes, _ = json.Marshal(research)
+
+	APIstub.PutState(args[0], researchAsBytes)
+	return shim.Success(researchAsBytes)
 }
 
 func (s *SmartContract) queryAllUsers(APIstub shim.ChaincodeStubInterface) sc.Response {
