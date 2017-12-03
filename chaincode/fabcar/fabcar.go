@@ -136,9 +136,11 @@ func (t *SmartContract) queryCardItemByCardID(APIstub shim.ChaincodeStubInterfac
 	cardID := args[0] //strings.ToUpper(args[0])
 
 	//	queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"carditem\",\"card\":\"%s\"}}", cardID)
-	queryString := fmt.Sprintf("{\"selector\":%s}", cardID)
+	//queryString := fmt.Sprintf("{\"selector\":%s}", cardID)
 
-	queryResults, err := getQueryResultForQueryString(APIstub, queryString)
+	queryResults, err := getStateByPartialCompositeKey(APIstub, "carditem~card", []string{cardID})
+
+	//	queryResults, err := getQueryResultForQueryString(APIstub, queryString)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -209,7 +211,19 @@ func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Respo
 
 			asBytes, _ := json.Marshal(cardItem)
 			fmt.Println("CARDITEM", cardItem)
-			APIstub.PutState("CARDITEM"+strconv.Itoa(j), asBytes)
+			cardItemKey := "CARDITEM" + strconv.Itoa(j)
+			APIstub.PutState(cardItemKey, asBytes)
+
+			indexName := "carditem~card"
+			colorNameIndexKey, err := APIstub.CreateCompositeKey(indexName, []string{cardItem.card, cardItemKey})
+			if err != nil {
+				return shim.Error(err.Error())
+			}
+			//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of the marble.
+			//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
+			value := []byte{0x00}
+			APIstub.PutState(colorNameIndexKey, value)
+
 		}
 	}
 
@@ -521,6 +535,71 @@ func getQueryResultForQueryString(APIstub shim.ChaincodeStubInterface, queryStri
 		buffer.WriteString("}")
 		bArrayMemberAlreadyWritten = true
 	}
+	buffer.WriteString("]")
+
+	fmt.Printf("- getQueryResultForQueryString queryResult:\n%s\n", buffer.String())
+
+	return buffer.Bytes(), nil
+}
+
+// =========================================================================================
+// getQueryResultForQueryString executes the passed in query string.
+// Result set is built and returned as a byte array containing the JSON results.
+// =========================================================================================
+func getStateByPartialCompositeKey(APIstub shim.ChaincodeStubInterface, objectType string, keys []string) ([]byte, error) {
+
+	fmt.Printf("- getQueryResultForobjectType objectType:\n%s\n", objectType)
+	resultsIterator, err := APIstub.GetStateByPartialCompositeKey(objectType, keys)
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	// buffer is a JSON array containing QueryRecords
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+	var i int
+	bArrayMemberAlreadyWritten := false
+
+	for i = 0; resultsIterator.HasNext(); i++ {
+		// Note that we don't get the value (2nd return variable), we'll just get the marble name from the composite key
+		responseRange, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		// get the color and name from color~name composite key
+		_, compositeKeyParts, err := APIstub.SplitCompositeKey(responseRange.Key)
+		if err != nil {
+			return nil, err
+		}
+
+		key := compositeKeyParts[1]
+
+		fmt.Printf("KEY: %s", key)
+
+		bytes, _ := APIstub.GetState(key)
+
+		//	cardItem := CardItem{}
+		//		json.Unmarshal(bytes, &cardItem)
+
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"Key\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(key)
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"Record\":")
+		// Record is a JSON object, so we write as-is
+
+		//	b, _ := json.Marshal(cardItem)
+		buffer.WriteString(string(bytes))
+		buffer.WriteString("}")
+		bArrayMemberAlreadyWritten = true
+	}
+
 	buffer.WriteString("]")
 
 	fmt.Printf("- getQueryResultForQueryString queryResult:\n%s\n", buffer.String())

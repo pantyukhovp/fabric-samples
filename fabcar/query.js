@@ -59,7 +59,7 @@ Fabric_Client.newDefaultKeyValueStore({ path: store_path
 
 //		fcn: 'getAllSubscribers',
 		fcn: 'queryCardItemByCARDID',
-		args: ['{\"card\":\"USER0\"}']
+		args: ['CARD11']
 	};
 
 	// send the query proposal to the peer
