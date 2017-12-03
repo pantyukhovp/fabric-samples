@@ -34,7 +34,6 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
-	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	sc "github.com/hyperledger/fabric/protos/peer"
@@ -65,7 +64,7 @@ type Card struct {
 }
 
 type CardItem struct {
-	CardID        string `json:"cardID"`
+	card          string `json:"card"`
 	Key           string `json:"key"`
 	Value         string `json:"value"`
 	AditionalData string `json:"aditionalData"`
@@ -111,7 +110,7 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
 	} else if function == "getAllSubscribers" {
 		return s.getAllSubscribers(APIstub, args)
 	} else if function == "queryCardItemByCARDID" {
-		return s.queryCardItemByCARDID(APIstub, args)
+		return s.queryCardItemByCardID(APIstub, args)
 	}
 
 	return shim.Error("Invalid Smart Contract function name. 1")
@@ -127,18 +126,19 @@ func (s *SmartContract) queryCar(APIstub shim.ChaincodeStubInterface, args []str
 	return shim.Success(carAsBytes)
 }
 
-func (t *SimpleChaincode) queryCardItemByCardID(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *SmartContract) queryCardItemByCardID(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
 	//   0
 	// "bob"
 	if len(args) < 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
 
-	cardID := strings.ToUpper(args[0])
+	cardID := args[0] //strings.ToUpper(args[0])
 
-	queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"cardItem\",\"cardID\":\"%s\"}}", owner)
+	//	queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"carditem\",\"card\":\"%s\"}}", cardID)
+	queryString := fmt.Sprintf("{\"selector\":%s}", cardID)
 
-	queryResults, err := getQueryResultForQueryString(stub, queryString)
+	queryResults, err := getQueryResultForQueryString(APIstub, queryString)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -197,12 +197,18 @@ func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Respo
 	}
 
 	for j := 0; j < 20; j++ {
-		asBytes, _ := json.Marshal(Card{UserID: "USER0", CompanyID: "COMPANY0", Name: "Карточка"})
+		card := Card{UserID: "USER0", CompanyID: "COMPANY0", Name: "Карточка"}
+		asBytes, _ := json.Marshal(card)
+
+		fmt.Println("CARD", card)
 		key := "CARD" + strconv.Itoa(j)
 		APIstub.PutState(key, asBytes)
 
 		for k := 0; k < 20; k++ {
-			asBytes, _ := json.Marshal(CardItem{CardID: key, Key: "Принятие таблетки 1", Value: "1", AditionalData: "Заметка врача", Date: "2017.06.18"})
+			cardItem := CardItem{card: key, Key: "Принятие таблетки 1", Value: "1", AditionalData: "Заметка врача", Date: "2017.06.18"}
+
+			asBytes, _ := json.Marshal(cardItem)
+			fmt.Println("CARDITEM", cardItem)
 			APIstub.PutState("CARDITEM"+strconv.Itoa(j), asBytes)
 		}
 	}
@@ -481,11 +487,10 @@ func randSeq(n int) string {
 // getQueryResultForQueryString executes the passed in query string.
 // Result set is built and returned as a byte array containing the JSON results.
 // =========================================================================================
-func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString string) ([]byte, error) {
+func getQueryResultForQueryString(APIstub shim.ChaincodeStubInterface, queryString string) ([]byte, error) {
 
 	fmt.Printf("- getQueryResultForQueryString queryString:\n%s\n", queryString)
-
-	resultsIterator, err := stub.GetQueryResult(queryString)
+	resultsIterator, err := APIstub.GetQueryResult(queryString)
 	if err != nil {
 		return nil, err
 	}
