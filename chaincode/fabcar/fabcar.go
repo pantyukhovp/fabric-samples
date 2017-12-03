@@ -34,12 +34,21 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	sc "github.com/hyperledger/fabric/protos/peer"
 )
 
 type SmartContract struct {
+}
+
+type Company struct {
+	Name string `json:"name"`
+}
+
+type Type struct {
+	Name string `json:"name"`
 }
 
 type User struct {
@@ -49,20 +58,18 @@ type User struct {
 	Hash      string `json:"hash"`
 }
 
-type Clinic struct {
-	Name string `json:"name"`
+type Card struct {
+	UserID    string `json:"userID"`
+	CompanyID string `json:"companyID"`
+	Name      string `json:"name"`
 }
 
-type Research struct {
-	Name     string `json:"name"`
-	Status   string `json:"status"`
-	DateFrom string `json:"dateFrom"`
-	DateTo   string `json:"dateTrom"`
-}
-
-type ResearchUser struct {
-	UserID     string `json:"userID"`
-	ResearchID string `json:"researchID"`
+type CardItem struct {
+	CardID        string `json:"cardID"`
+	Key           string `json:"key"`
+	Value         string `json:"value"`
+	AditionalData string `json:"aditionalData"`
+	Date          string `json:"date"`
 }
 
 /*
@@ -103,6 +110,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
 		return s.subscribe(APIstub, args)
 	} else if function == "getAllSubscribers" {
 		return s.getAllSubscribers(APIstub, args)
+	} else if function == "queryCardItemByCARDID" {
+		return s.queryCardItemByCARDID(APIstub, args)
 	}
 
 	return shim.Error("Invalid Smart Contract function name. 1")
@@ -116,6 +125,24 @@ func (s *SmartContract) queryCar(APIstub shim.ChaincodeStubInterface, args []str
 
 	carAsBytes, _ := APIstub.GetState(args[0])
 	return shim.Success(carAsBytes)
+}
+
+func (t *SimpleChaincode) queryCardItemByCardID(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	//   0
+	// "bob"
+	if len(args) < 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	cardID := strings.ToUpper(args[0])
+
+	queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"cardItem\",\"cardID\":\"%s\"}}", owner)
+
+	queryResults, err := getQueryResultForQueryString(stub, queryString)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success(queryResults)
 }
 
 func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Response {
@@ -139,55 +166,62 @@ func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Respo
 
 	// Add clinic
 
-	clinics := []Clinic{
-		Clinic{Name: "НИИ онкологии им. Н.Н. Петрова"},
-		Clinic{Name: "Университетская Клиника"},
-		Clinic{Name: "Городской Клинический Онкологический Диспансер"},
-		Clinic{Name: "Медлайн-Сервис на Октябрьском поле"},
-		Clinic{Name: "Он клиник на Новом Арбате"},
-		Clinic{Name: "Центр эндохирургии и литотрипсии (ЦЭЛТ)"},
-		Clinic{Name: "Клиника Столица на Ленинском, 90"},
-		Clinic{Name: "Клиника Столица на Арбате"},
-		Clinic{Name: "Европейский медицинский центр на ул. Щепкина"},
-		Clinic{Name: "ЭлЭн"},
-		Clinic{Name: "Ортодонт комплекс"},
-		Clinic{Name: "Simpladent на Дмитровской"},
-		Clinic{Name: "Simpladent на Пролетарской"},
-		Clinic{Name: "Перинатальный медицинский центр Мать и Дитя"},
-		Clinic{Name: "Медлайн-Сервис на Полежаевской"},
-		Clinic{Name: "Медлайн-Сервис на Сходненской"},
-		Clinic{Name: "Медлайн-Сервис на Октябрьском поле"},
-		Clinic{Name: "Медлайн-Сервис на ВДНХ"},
+	companies := []Company{
+		Company{Name: "НИИ онкологии им. Н.Н. Петрова"},
+		Company{Name: "Университетская Клиника"},
+		Company{Name: "Городской Клинический Онкологический Диспансер"},
+		Company{Name: "Медлайн-Сервис на Октябрьском поле"},
+		Company{Name: "Он клиник на Новом Арбате"},
+		Company{Name: "Центр эндохирургии и литотрипсии (ЦЭЛТ)"},
+		Company{Name: "Клиника Столица на Ленинском, 90"},
+		Company{Name: "Клиника Столица на Арбате"},
+		Company{Name: "Европейский медицинский центр на ул. Щепкина"},
+		Company{Name: "ЭлЭн"},
+		Company{Name: "Ортодонт комплекс"},
+		Company{Name: "Simpladent на Дмитровской"},
+		Company{Name: "Simpladent на Пролетарской"},
+		Company{Name: "Перинатальный медицинский центр Мать и Дитя"},
+		Company{Name: "Медлайн-Сервис на Полежаевской"},
+		Company{Name: "Медлайн-Сервис на Сходненской"},
+		Company{Name: "Медлайн-Сервис на Октябрьском поле"},
+		Company{Name: "Медлайн-Сервис на ВДНХ"},
 	}
-
-	// for i := 0; i < 10; i++ {
-	// 	append(clinics, Clinic{Name: "Simpladent на Пролетарской"})
-	// }
 
 	j := 0
-	for j < len(clinics) {
+	for j < len(companies) {
 		fmt.Println("j is ", j)
-		clinicAsBytes, _ := json.Marshal(clinics[j])
-		APIstub.PutState("CLINIC"+strconv.Itoa(j), clinicAsBytes)
-		fmt.Println("Added", clinics[j])
+		asBytes, _ := json.Marshal(companies[j])
+		APIstub.PutState("COMPANY"+strconv.Itoa(j), asBytes)
+		fmt.Println("Added", companies[j])
 		j = j + 1
 	}
 
-	researchs := []Research{
-		Research{Name: "Исследование 1", Status: "Active", DateFrom: "", DateTo: ""},
+	for j := 0; j < 20; j++ {
+		asBytes, _ := json.Marshal(Card{UserID: "USER0", CompanyID: "COMPANY0", Name: "Карточка"})
+		key := "CARD" + strconv.Itoa(j)
+		APIstub.PutState(key, asBytes)
+
+		for k := 0; k < 20; k++ {
+			asBytes, _ := json.Marshal(CardItem{CardID: key, Key: "Принятие таблетки 1", Value: "1", AditionalData: "Заметка врача", Date: "2017.06.18"})
+			APIstub.PutState("CARDITEM"+strconv.Itoa(j), asBytes)
+		}
 	}
 
-	for j := 0; j < 100; j++ {
-		researchs = append(researchs, Research{Name: "Исследование 1", Status: "Active", DateFrom: "", DateTo: ""})
-	}
-	j = 0
-	for j < len(researchs) {
-		fmt.Println("j is ", j)
-		asBytes, _ := json.Marshal(researchs[j])
-		APIstub.PutState("RESEARCH"+strconv.Itoa(j), asBytes)
-		fmt.Println("Added", researchs[j])
-		j = j + 1
-	}
+	// researchs := []Research{
+	// 	Research{Name: "Исследование 1", Status: "Active", DateFrom: "", DateTo: ""},
+	// }
+
+	// for j := 0; j < 100; j++ {
+	// 	researchs = append(researchs, Research{Name: "Исследование 1", Status: "Active", DateFrom: "", DateTo: ""})
+	// }
+	// j = 0
+	// for j < len(researchs) {
+	// 	fmt.Println("j is ", j)
+	// 	asBytes, _ := json.Marshal(researchs[j])
+	// 	APIstub.PutState("RESEARCH"+strconv.Itoa(j), asBytes)
+	// 	fmt.Println("Added", researchs[j])
+	// 	j = j + 1
+	// }
 
 	return shim.Success(nil)
 }
@@ -294,27 +328,28 @@ func (s *SmartContract) queryAllResearches(APIstub shim.ChaincodeStubInterface) 
 
 func (s *SmartContract) subscribe(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
 
-	if len(args) <= 1 {
-		return shim.Error("Incorrect number of arguments. Expecting 1")
-	}
+	// if len(args) <= 1 {
+	// 	return shim.Error("Incorrect number of arguments. Expecting 1")
+	// }
 
-	researchAsBytes, _ := APIstub.GetState(args[0])
-	research := Research{}
-	json.Unmarshal(researchAsBytes, &research)
+	// researchAsBytes, _ := APIstub.GetState(args[0])
+	// research := Research{}
+	// json.Unmarshal(researchAsBytes, &research)
 
-	userAsBytes, _ := APIstub.GetState(args[1])
-	user := User{}
-	json.Unmarshal(userAsBytes, &user)
+	// userAsBytes, _ := APIstub.GetState(args[1])
+	// user := User{}
+	// json.Unmarshal(userAsBytes, &user)
 
-	asBytes, _ := json.Marshal(ResearchUser{UserID: args[1], ResearchID: args[0]})
+	// asBytes, _ := json.Marshal(ResearchUser{UserID: args[1], ResearchID: args[0]})
 
-	key := "RESEARCHUSER" + strconv.Itoa(rand.Intn(10000000))
-	//TODO SOOOOOBAD
-	APIstub.PutState(key, asBytes)
+	// key := "RESEARCHUSER" + strconv.Itoa(rand.Intn(10000000))
+	// //TODO SOOOOOBAD
+	// APIstub.PutState(key, asBytes)
 
-	itemAsBytes, _ := APIstub.GetState(key)
-	return shim.Success(itemAsBytes)
+	// itemAsBytes, _ := APIstub.GetState(key)
+	// return shim.Success(itemAsBytes)
 
+	return shim.Success(nil)
 }
 
 func (s *SmartContract) getAllSubscribers(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
@@ -440,4 +475,50 @@ func randSeq(n int) string {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
+}
+
+// =========================================================================================
+// getQueryResultForQueryString executes the passed in query string.
+// Result set is built and returned as a byte array containing the JSON results.
+// =========================================================================================
+func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString string) ([]byte, error) {
+
+	fmt.Printf("- getQueryResultForQueryString queryString:\n%s\n", queryString)
+
+	resultsIterator, err := stub.GetQueryResult(queryString)
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	// buffer is a JSON array containing QueryRecords
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+		// Add a comma before array members, suppress it for the first array member
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"Key\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(queryResponse.Key)
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"Record\":")
+		// Record is a JSON object, so we write as-is
+		buffer.WriteString(string(queryResponse.Value))
+		buffer.WriteString("}")
+		bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+
+	fmt.Printf("- getQueryResultForQueryString queryResult:\n%s\n", buffer.String())
+
+	return buffer.Bytes(), nil
 }
